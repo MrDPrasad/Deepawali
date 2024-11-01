@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diwali Fireworks - Interactive Cursor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <style>
+        * {
+            cursor: none !important;
+        }
+
+        body {
+            cursor: none !important;
+            overflow: hidden;
+            margin: 0;
+            background: black;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        #sudarshana-chakra {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            background: conic-gradient(
+                from 0deg,
+                #ffcc00 0%,
+                #ff6600 25%,
+                #ffcc00 50%,
+                #ff6600 75%,
+                #ffcc00 100%
+            );
+            clip-path: polygon(
+                50% 0%, 61.8% 38.2%, 100% 50%, 
+                61.8% 61.8%, 50% 100%, 38.2% 61.8%, 
+                0% 50%, 38.2% 38.2%
+            );
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            pointer-events: none;
+            will-change: transform;
+            filter: drop-shadow(0 0 10px rgba(255, 165, 0, 0.5));
+        }
+
+        .cursor-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 99;
+            border-radius: 50%;
+            will-change: transform, opacity;
+        }
+
+        @keyframes chakraSpin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .spinning {
+            animation: chakraSpin 0.5s linear infinite;
+        }
+
+        #lottie-container {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="text-white text-center flex items-center justify-center h-screen">
+    <canvas id="Canvas" class="fixed top-0 left-0 w-full h-full z-[-1]"></canvas>
+    <div id="sudarshana-chakra" class="spinning" style="display:none;"></div>
+
+    <div class="text-center relative z-10">
+        <div id="lottie-container" class="mb-4"></div>
+        <div class="text-3xl font-bold transition-all duration-500 hover:scale-110">
+            Happy Diwali to Friends and Family! 🎆
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lottie animation
+        const lottieContainer = document.getElementById('lottie-container');
+        const lottieAnim = lottie.loadAnimation({
+            container: lottieContainer,
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            path: 'https://lottie.host/bd21f52b-1d2f-46d2-9093-e03b0c2a962a/NyiLMFCmkq.json'
+        });
+
+        const c = document.getElementById("Canvas");
+        const ctx = c.getContext("2d", { alpha: false });
+        
+        let cwidth, cheight;
+        const shells = [];
+        const pass = [];
+        const colors = ['#FF5252', '#FF4081', '#E040FB', '#7C4DFF', '#536DFE', '#448AFF', '#40C4FF', '#FFD740'];
+        
+        let mouseX = null, mouseY = null;
+        let lastTime = 0;
+        const particles = [];
+        const MAX_PARTICLES = 30;
+
+        function reset() {
+            cwidth = window.innerWidth;
+            cheight = window.innerHeight;
+            c.width = cwidth;
+            c.height = cheight;
+        }
+
+        function createParticle(x, y) {
+            const particle = document.createElement('div');
+            particle.className = 'cursor-particle';
+            
+            // Random size between 3 and 8 pixels
+            const size = Math.random() * 5 + 3;
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            
+            // Random color from a fiery palette
+            const colors = [
+                'rgba(255, 204, 0, 0.8)',
+                'rgba(255, 102, 0, 0.8)',
+                'rgba(255, 153, 0, 0.8)',
+                'rgba(255, 51, 0, 0.8)'
+            ];
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Set initial position
+            particle.style.left = `${x}px`;
+            particle.style.top = `${y}px`;
+            
+            // Add to DOM
+            document.body.appendChild(particle);
+            
+            // Calculate random movement
+            const angle = Math.random() * Math.PI * 2;
+            const velocity = Math.random() * 3 + 2;
+            const lifetime = Math.random() * 500 + 500; // Particle lifetime between 500ms and 1000ms
+            
+            // Store particle data
+            particles.push({
+                element: particle,
+                startTime: Date.now(),
+                lifetime: lifetime,
+                velocity: velocity,
+                angle: angle,
+                x: x,
+                y: y
+            });
+            
+            // Remove oldest particle if we exceed MAX_PARTICLES
+            if (particles.length > MAX_PARTICLES) {
+                const oldParticle = particles.shift();
+                oldParticle.element.remove();
+            }
+        }
+
+        function updateParticles() {
+            const currentTime = Date.now();
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                const age = currentTime - particle.startTime;
+                
+                if (age >= particle.lifetime) {
+                    particle.element.remove();
+                    particles.splice(i, 1);
+                    continue;
+                }
+                
+                // Update position
+                particle.x += Math.cos(particle.angle) * particle.velocity;
+                particle.y += Math.sin(particle.angle) * particle.velocity;
+                
+                // Update opacity based on age
+                const opacity = 1 - (age / particle.lifetime);
+                particle.element.style.opacity = opacity;
+                
+                // Apply transform
+                particle.element.style.transform = `translate(${particle.x}px, ${particle.y}px)`;
+            }
+        }
+
+        function newShell() {
+            const left = Math.random() > 0.5;
+            shells.push({
+                x: (1 * left),
+                y: 1,
+                xoff: (0.01 + Math.random() * 0.007) * (left ? 1 : -1),
+                yoff: 0.01 + Math.random() * 0.007,
+                size: Math.random() * 6 + 3,
+                color: colors[Math.floor(Math.random() * colors.length)]
+            });
+        }
+
+        function newPass(shell) {
+            const pasCount = Math.ceil(Math.pow(shell.size, 2) * Math.PI);
+            for (let i = 0; i < pasCount && pass.length < 1000; i++) {
+                const a = Math.random() * 4;
+                const s = Math.random() * 10;
+                pass.push({
+                    x: shell.x * cwidth,
+                    y: shell.y * cheight,
+                    xoff: s * Math.sin((5 - a) * (Math.PI / 2)),
+                    yoff: s * Math.sin(a * (Math.PI / 2)),
+                    color: shell.color,
+                    size: Math.sqrt(shell.size)
+                });
+            }
+        }
+
+        function Run(timestamp) {
+            const dt = Math.min(50, timestamp - lastTime);
+            lastTime = timestamp;
+
+            ctx.fillStyle = "rgba(0,0,0,0.25)";
+            ctx.fillRect(0, 0, cwidth, cheight);
+
+            updateParticles();
+
+            if (shells.length < 10 && Math.random() > 0.96) {
+                newShell();
+            }
+
+            for (let i = shells.length - 1; i >= 0; i--) {
+                const shell = shells[i];
+                
+                ctx.beginPath();
+                ctx.arc(shell.x * cwidth, shell.y * cheight, shell.size, 0, 2 * Math.PI);
+                ctx.fillStyle = shell.color;
+                ctx.fill();
+
+                shell.x -= shell.xoff;
+                shell.y -= shell.yoff;
+                shell.xoff -= (shell.xoff * dt * 0.001);
+                shell.yoff -= ((shell.yoff + 0.2) * dt * 0.00005);
+
+                if (shell.yoff < -0.005) {
+                    newPass(shell);
+                    shells.splice(i, 1);
+                }
+            }
+
+            for (let i = pass.length - 1; i >= 0; i--) {
+                const pas = pass[i];
+
+                if (mouseX !== null && mouseY !== null) {
+                    const dx = pas.x - mouseX;
+                    const dy = pas.y - mouseY;
+                    const distance = Math.hypot(dx, dy);
+
+                    if (distance < 100) {
+                        const angle = Math.atan2(dy, dx);
+                        pas.x += Math.cos(angle) * 5;
+                        pas.y += Math.sin(angle) * 5;
+                    }
+                }
+
+                ctx.beginPath();
+                ctx.arc(pas.x, pas.y, pas.size, 0, 2 * Math.PI);
+                ctx.fillStyle = pas.color;
+                ctx.fill();
+
+                pas.x -= pas.xoff;
+                pas.y -= pas.yoff;
+                pas.xoff -= (pas.xoff * dt * 0.001);
+                pas.yoff -= ((pas.yoff + 5) * dt * 0.0005);
+                pas.size -= (dt * 0.002 * Math.random());
+
+                if (pas.y > cheight || pas.y < -50 || pas.size <= 0) {
+                    pass.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(Run);
+        }
+
+        document.addEventListener('mouseenter', (event) => {
+            const chakra = document.getElementById('sudarshana-chakra');
+            chakra.style.display = 'block';
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        });
+
+        let lastParticleTime = 0;
+        const PARTICLE_INTERVAL = 50; // Create particles every 50ms
+
+        document.addEventListener('mousemove', (event) => {
+            event.preventDefault();
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+            
+            const chakra = document.getElementById('sudarshana-chakra');
+            chakra.style.left = `${mouseX}px`;
+            chakra.style.top = `${mouseY}px`;
+            chakra.style.display = 'block';
+
+            const currentTime = Date.now();
+            if (currentTime - lastParticleTime > PARTICLE_INTERVAL) {
+                createParticle(mouseX, mouseY);
+                lastParticleTime = currentTime;
+            }
+        });
+
+        document.addEventListener('mouseleave', () => {
+            const chakra = document.getElementById('sudarshana-chakra');
+            chakra.style.display = 'none';
+        });
+
+        window.addEventListener('resize', reset);
+        reset();
+        requestAnimationFrame(Run);
+    </script>
+</body>
+</html>
