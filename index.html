@@ -153,7 +153,7 @@
             // Calculate random movement
             const angle = Math.random() * Math.PI * 2;
             const velocity = Math.random() * 3 + 2;
-            const lifetime = Math.random() * 500 + 500; // Particle lifetime between 500ms and 1000ms
+            const lifetime = Math.random() * 600 + 600; // Particle lifetime between 500ms and 1000ms
             
             // Store particle data
             particles.push({
@@ -210,7 +210,42 @@
                 color: colors[Math.floor(Math.random() * colors.length)]
             });
         }
+  
+        const audio = new Audio('./assets/fireworks.mp3');
+        function addAudio() {
+            audio.loop = true;
+            audio.play().catch(error => {
+            console.log('Autoplay was prevented:', error);
+            });
+        }
+        // Add a button to toggle sound
+        const soundButton = document.createElement('button');
+        soundButton.innerHTML = '🔊';
+        soundButton.className = 'fixed top-4 right-4 bg-gray-800 text-white p-2 rounded-full shadow-lg hover:bg-gray-700 transition-all duration-300';
+        document.body.appendChild(soundButton);
 
+        let isSoundOn = true;
+        soundButton.addEventListener('click', () => {
+            if (isSoundOn) {
+            audio.pause();
+            soundButton.innerHTML = '🔇';
+            } else {
+            audio.play().catch(error => {
+                console.log('Autoplay was prevented:', error);
+            });
+            soundButton.innerHTML = '🔊';
+            }
+            isSoundOn = !isSoundOn;
+            localStorage.setItem('isSoundOn', isSoundOn);
+        });
+
+        // Check local storage for sound preference
+        if (localStorage.getItem('isSoundOn') === 'false') {
+            isSoundOn = false;
+            soundButton.innerHTML = '🔇';
+        } else {
+            addAudio();
+        }
         function newPass(shell) {
             const pasCount = Math.ceil(Math.pow(shell.size, 2) * Math.PI);
             for (let i = 0; i < pasCount && pass.length < 1000; i++) {
